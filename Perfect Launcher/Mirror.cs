@@ -57,6 +57,9 @@ namespace Perfect_Launcher
         struct POINT { public int x; public int y; }
 
         [StructLayout(LayoutKind.Sequential)]
+        struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
+
+        [StructLayout(LayoutKind.Sequential)]
         struct MSLLHOOKSTRUCT
         {
             public POINT pt;
@@ -90,6 +93,9 @@ namespace Perfect_Launcher
         static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
 
         [DllImport("user32.dll")]
+        static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll")]
         static extern uint MapVirtualKey(uint uCode, uint uMapType);
 
         // ---- Estado ----
@@ -105,8 +111,24 @@ namespace Perfect_Launcher
         List<IntPtr> _cache = new List<IntPtr>();
         int _lastRefresh = -100000;
 
-        /// <summary>Liga/desliga o espelhamento.</summary>
-        public bool Enabled { get; set; }
+        // Teclas que foram espelhadas e ainda estão pressionadas (para soltá-las ao desligar).
+        readonly HashSet<uint> _pressedKeys = new HashSet<uint>();
+
+        private bool _enabled;
+        /// <summary>Liga/desliga o espelhamento. Ao desligar, solta nas contas qualquer
+        /// tecla/botão que tenha ficado pressionado (senão a conta "trava" segurando a tecla).</summary>
+        public bool Enabled
+        {
+            get { return _enabled; }
+            set
+            {
+                if (_enabled == value)
+                    return;
+                _enabled = value;
+                if (!value)
+                    ReleaseAll();
+            }
+        }
 
         /// <summary>Tecla que liga/desliga o mirror mesmo com o launcher minimizado (padrão: Pause/Break).</summary>
         public Keys ToggleKey = Keys.Pause;
@@ -184,6 +206,10 @@ namespace Perfect_Launcher
             bool extended = (data.flags & LLKHF_EXTENDED) != 0;
             bool isDown = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
 
+            // Mantém o registro das teclas pressionadas para poder soltá-las ao desligar.
+            if (isDown) _pressedKeys.Add(data.vkCode);
+            else _pressedKeys.Remove(data.vkCode);
+
             // lParam de WM_KEYDOWN/UP: repeat=1, scan code, flag de tecla estendida
             // e, no keyup, os bits de "estado anterior" (30) e "transição" (31).
             uint lp = 1u | (scan << 16);
@@ -198,6 +224,41 @@ namespace Perfect_Launcher
                 if (h == master || h == IntPtr.Zero)
                     continue;
                 PostMessage(h, (uint)msg, wParam, lParam);
+            }
+        }
+
+        // Ao desligar o espelho, solta em todas as contas qualquer tecla/botão que
+        // ainda estivesse pressionada (evita a conta ficar "andando"/atacando sozinha).
+        void ReleaseAll()
+        {
+            List<IntPtr> targets;
+            try { targets = _getTargets() ?? new List<IntPtr>(); }
+            catch { targets = _cache; }
+
+            IntPtr master = GetForegroundWindow();
+
+            foreach (uint vk in new List<uint>(_pressedKeys))
+            {
+                uint scan = MapVirtualKey(vk, 0);
+                uint lp = 1u | (scan << 16) | (1u << 30) | (1u << 31); // KEYUP
+                IntPtr wp = Ptr(vk);
+                IntPtr lParam = Ptr(lp);
+                foreach (IntPtr h in targets)
+                {
+                    if (h == master || h == IntPtr.Zero)
+                        continue;
+                    PostMessage(h, (uint)WM_KEYUP, wp, lParam);
+                }
+            }
+            _pressedKeys.Clear();
+
+            // Solta também os botões do mouse.
+            foreach (IntPtr h in targets)
+            {
+                if (h == master || h == IntPtr.Zero)
+                    continue;
+                PostMessage(h, (uint)WM_LBUTTONUP, Ptr(0), Ptr(0));
+                PostMessage(h, (uint)WM_RBUTTONUP, Ptr(0), Ptr(0));
             }
         }
 
@@ -227,6 +288,15 @@ namespace Perfect_Launcher
             // têm o mesmo tamanho, a mesma coordenada cai no mesmo ponto da UI em cada uma.
             POINT rel = data.pt;
             ScreenToClient(master, ref rel);
+
+            // Só espelha se o cursor estiver DENTRO da área do jogo (client rect).
+            // Cliques na barra de título / fora da janela são ignorados.
+            RECT cr;
+            if (!GetClientRect(master, out cr))
+                return;
+            if (rel.x < 0 || rel.y < 0 || rel.x > cr.Right || rel.y > cr.Bottom)
+                return;
+
             IntPtr lpClient = Ptr(((uint)(rel.y & 0xFFFF) << 16) | (uint)(rel.x & 0xFFFF));
 
             // A roda usa coordenadas de TELA e o delta no high word do wParam.

@@ -498,7 +498,42 @@ namespace Perfect_Launcher
             {
                 listBox2.SelectedIndex = SelectedIndex;
             }
-                
+
+            // Salva a fila do combo automaticamente
+            SaveComboQueue();
+        }
+
+        // Persiste a fila do combo (nomes das contas) para restaurar depois.
+        private void SaveComboQueue()
+        {
+            try
+            {
+                Settings.Default.ComboQueue.Clear();
+                foreach (int i in IndexQueue)
+                    if (i >= 0 && i < Settings.Default.User.Count && !string.IsNullOrWhiteSpace(Settings.Default.User[i]))
+                        Settings.Default.ComboQueue.Add(Settings.Default.User[i]);
+                Settings.Default.Save();
+            }
+            catch { }
+        }
+
+        // Restaura a fila do combo salva anteriormente (mapeia nomes -> index atuais).
+        private void LoadComboQueue()
+        {
+            try
+            {
+                if (Settings.Default.ComboQueue == null)
+                    return;
+
+                IndexQueue.Clear();
+                foreach (string user in Settings.Default.ComboQueue)
+                {
+                    int idx = Settings.Default.User.IndexOf(user);
+                    if (idx >= 0 && !IndexQueue.Contains(idx))
+                        IndexQueue.Add(idx);
+                }
+            }
+            catch { }
         }
 
         private void button2_Click_1(object sender, EventArgs e)
@@ -818,6 +853,10 @@ namespace Perfect_Launcher
             SetupMirrorToggle();
 
             UpdateListBox1();
+
+            // Restaura a fila do combo salva da última vez
+            LoadComboQueue();
+            UpdateListBox2();
         }
 
         // Cria um checkbox visível "Espelhar" na janela do Combar. O motor do mirror
