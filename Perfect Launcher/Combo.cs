@@ -218,110 +218,40 @@ namespace Perfect_Launcher
 
         private void OnKeyPressed(object sender, GlobalKeyboardHookEventArgs e)
         {
-            // EDT: No need to filter for VkSnapshot anymore. This now gets handled
-            // through the constructor of GlobalKeyboardHook(...).
+            if (e.KeyboardState != GlobalKeyboardHook.KeyboardState.KeyDown)
+                return;
 
-            if (e.KeyboardState == GlobalKeyboardHook.KeyboardState.KeyDown)
+            // Retorna caso a troca de contas esteja bloqueada
+            if (bChangeBlocked)
+                return;
+
+            Keys key = e.KeyboardData.Key;
+            Keys Next = GetKeyFromIndex(Settings.Default.ProximaContaBtn);
+            Keys Back = GetKeyFromIndex(Settings.Default.ContaAnteriorBtn);
+            Keys BandF = GetKeyFromIndex(Settings.Default.RevezarContasBtn);
+
+            Action act = null;
+            if (key == Next) act = () => TryToChangeUser(0);
+            else if (key == Back) act = () => TryToChangeUser(2);
+            else if (key == BandF) act = () => TryToChangeUser(1);
+            else if (key == Keys.NumPad1) act = () => ChangeUserBasedOnIndex(0);
+            else if (key == Keys.NumPad2) act = () => ChangeUserBasedOnIndex(1);
+            else if (key == Keys.NumPad3) act = () => ChangeUserBasedOnIndex(2);
+            else if (key == Keys.NumPad4) act = () => ChangeUserBasedOnIndex(3);
+            else if (key == Keys.NumPad5) act = () => ChangeUserBasedOnIndex(4);
+            else if (key == Keys.NumPad6) act = () => ChangeUserBasedOnIndex(5);
+            else if (key == Keys.NumPad7) act = () => ChangeUserBasedOnIndex(6);
+            else if (key == Keys.NumPad8) act = () => ChangeUserBasedOnIndex(7);
+            else if (key == Keys.NumPad9) act = () => ChangeUserBasedOnIndex(8);
+            else if (key == Keys.NumPad0) act = () => ChangeUserBasedOnIndex(9);
+
+            // IMPORTANTE: a troca (SetForegroundWindow etc.) NÃO pode rodar dentro do
+            // hook de baixo nível — apertando em loop isso trava o sistema, pois o hook
+            // precisa retornar rápido. Despacha para o loop de mensagens e retorna já.
+            if (act != null)
             {
-                // Retorna caso a troca de contas esteja bloqueada
-                if (bChangeBlocked)
-                    return;
-
-                Keys Next = GetKeyFromIndex(Settings.Default.ProximaContaBtn);
-                Keys Back = GetKeyFromIndex(Settings.Default.ContaAnteriorBtn);
-                Keys BandF = GetKeyFromIndex(Settings.Default.RevezarContasBtn);
-
-                // Sim, eu fiz com um monte de elseif mesmo, me processa.
-                if (e.KeyboardData.Key == Next)
-                {
-                    TryToChangeUser(0);
-                }
-                else if (e.KeyboardData.Key == Back)
-                {
-                    TryToChangeUser(2);
-                }
-                else if (e.KeyboardData.Key == BandF)
-                {
-                    TryToChangeUser(1);
-                }
-                else if (e.KeyboardData.Key == Keys.NumPad1)
-                {
-                    ChangeUserBasedOnIndex(0);
-                }
-                else if (e.KeyboardData.Key == Keys.NumPad2)
-                {
-                    ChangeUserBasedOnIndex(1);
-                }
-                else if (e.KeyboardData.Key == Keys.NumPad3)
-                {
-                    ChangeUserBasedOnIndex(2);
-                }
-                else if (e.KeyboardData.Key == Keys.NumPad4)
-                {
-                    ChangeUserBasedOnIndex(3);
-                }
-                else if (e.KeyboardData.Key == Keys.NumPad5)
-                {
-                    ChangeUserBasedOnIndex(4);
-                }
-                else if (e.KeyboardData.Key == Keys.NumPad6)
-                {
-                    ChangeUserBasedOnIndex(5);
-                }
-                else if (e.KeyboardData.Key == Keys.NumPad7)
-                {
-                    ChangeUserBasedOnIndex(6);
-                }
-                else if (e.KeyboardData.Key == Keys.NumPad8)
-                {
-                    ChangeUserBasedOnIndex(7);
-                }
-                else if (e.KeyboardData.Key == Keys.NumPad9)
-                {
-                    ChangeUserBasedOnIndex(8);
-                }
-                else if (e.KeyboardData.Key == Keys.NumPad0)
-                {
-                    ChangeUserBasedOnIndex(9);
-                }
-
-                /*
-                switch(e.KeyboardData.Key)
-                {
-                    case Keys.Oemtilde: TryToChangeUser(0); break;
-                    case Keys.LShiftKey: TryToChangeUser(1); break;
-                    //case Keys.D1:
-                    case Keys.NumPad1:
-                        ChangeUserBasedOnIndex(0); break;
-                    //case Keys.D2:
-                    case Keys.NumPad2:
-                        ChangeUserBasedOnIndex(1); break;
-                    //case Keys.D3:
-                    case Keys.NumPad3:
-                        ChangeUserBasedOnIndex(2); break;
-                    //case Keys.D4:
-                    case Keys.NumPad4:
-                        ChangeUserBasedOnIndex(3); break;
-                    //case Keys.D5:
-                    case Keys.NumPad5:
-                        ChangeUserBasedOnIndex(4); break;
-                    //case Keys.D6:
-                    case Keys.NumPad6:
-                        ChangeUserBasedOnIndex(5); break;
-                    //case Keys.D7:
-                    case Keys.NumPad7:
-                        ChangeUserBasedOnIndex(6); break;
-                    //case Keys.D8:
-                    case Keys.NumPad8:
-                        ChangeUserBasedOnIndex(7); break;
-                    //case Keys.D9:
-                    case Keys.NumPad9:
-                        ChangeUserBasedOnIndex(8); break;
-                    //case Keys.D0:
-                    case Keys.NumPad0:
-                        ChangeUserBasedOnIndex(9); break;
-                    default: break;
-                } */
+                try { if (IsHandleCreated) BeginInvoke(act); }
+                catch { }
             }
         }
 

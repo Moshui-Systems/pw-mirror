@@ -508,9 +508,19 @@ namespace Perfect_Launcher
             catch { }
         }
 
-        // Retorna os handles das janelas de TODOS os clientes do PW abertos — inclusive
-        // os que o launcher não abriu (assim o espelho acerta todos, não só os rastreados).
+        // Cache dos handles das janelas dos clientes, atualizado por uma thread de fundo.
+        // IMPORTANTE: a enumeração (Process.GetProcesses + MainWindowHandle) NÃO pode
+        // rodar dentro do hook de mouse/teclado (trava a UI e pode dar deadlock com as
+        // janelas do jogo). O InputMirror só lê esta lista pronta.
+        volatile List<IntPtr> _clientHandles = new List<IntPtr>();
+        System.Threading.Timer _clientHandlesTimer;
+
         public List<IntPtr> GetClientWindowHandles()
+        {
+            return _clientHandles;
+        }
+
+        private List<IntPtr> EnumerateClientHandles()
         {
             var handles = new List<IntPtr>();
             foreach (Process p in Process.GetProcesses())
@@ -529,10 +539,22 @@ namespace Perfect_Launcher
             return handles;
         }
 
+        private void StartClientHandlesUpdater()
+        {
+            _clientHandlesTimer = new System.Threading.Timer(_ =>
+            {
+                try { _clientHandles = EnumerateClientHandles(); }
+                catch { }
+            }, null, 0, 750);
+        }
+
         // Cria o motor de espelhamento. O controle (ligar/desligar) fica na janela do
         // Combo (Combar), que continua aberta durante o jogo, e na tecla Pause/Break.
         private void SetupMirror()
         {
+            // Atualiza os handles dos clientes em background (nunca dentro do hook)
+            StartClientHandlesUpdater();
+
             Mirror = new InputMirror(GetClientWindowHandles);
         }
 
@@ -1226,6 +1248,7 @@ namespace Perfect_Launcher
             {
                 if (Mirror != null) Mirror.Dispose();
                 if (MacroEng != null) MacroEng.Dispose();
+                if (_clientHandlesTimer != null) _clientHandlesTimer.Dispose();
             }
 
             // É pra fechar ou pra minimizar?
