@@ -565,55 +565,37 @@ namespace Perfect_Launcher
                 notifyIcon1.Text = "Perfect Mirror";
             }
 
-            // Fundo escuro liso (respeita um fundo que o usuário configurar em "Opções").
+            // Fundo: avatar da Moshui escurecido, como marca d'água
+            // (respeita um fundo que o usuário configurar em "Opções").
             if (string.IsNullOrWhiteSpace(Settings.Default.BackgroundImg))
             {
-                this.BackgroundImage = null;
                 this.BackColor = Theme.Bg;
+                var bg = Theme.LoadImage("bg_pm.png");
+                if (bg != null)
+                {
+                    this.BackgroundImage = bg;
+                    this.BackgroundImageLayout = ImageLayout.Stretch;
+                }
             }
 
             int cw = this.ClientSize.Width;
 
-            // Banner de mensagens desativado
+            // Sem banner e sem rodapé
             labelGlobal.Visible = false;
             bBlockRoll = true;
-
-            // Logo nítido centralizado
-            var logo = Theme.LoadImage("moshui_logo.png");
-            if (logo != null)
-            {
-                var pic = new PictureBox
-                {
-                    Image = logo,
-                    SizeMode = PictureBoxSizeMode.Zoom,
-                    Size = new Size(78, 78),
-                    Location = new Point((cw - 78) / 2, 30),
-                    BackColor = Color.Transparent
-                };
-                this.Controls.Add(pic);
-            }
+            if (panel1 != null)
+                panel1.Visible = false;
 
             this.Controls.Add(new Label
             {
                 Text = "PERFECT MIRROR",
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 21f, FontStyle.Bold),
+                Font = new Font("Segoe UI", 24f, FontStyle.Bold),
                 ForeColor = Theme.Text,
                 BackColor = Color.Transparent,
-                Size = new Size(cw, 38),
-                Location = new Point(0, 114)
-            });
-            this.Controls.Add(new Label
-            {
-                Text = "by Moshui Systems",
-                AutoSize = false,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 9.5f, FontStyle.Regular),
-                ForeColor = Theme.Accent,
-                BackColor = Color.Transparent,
-                Size = new Size(cw, 20),
-                Location = new Point(0, 152)
+                Size = new Size(cw, 44),
+                Location = new Point(0, 92)
             });
 
             // ---- Card central com as contas e ações ----

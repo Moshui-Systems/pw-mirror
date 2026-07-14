@@ -194,6 +194,7 @@
     <Compile Include="Theme.cs" />
     <EmbeddedResource Include="perfectmirror.ico" />
     <EmbeddedResource Include="moshui_logo.png" />
+    <EmbeddedResource Include="bg_pm.png" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RunningGames.cs" />
