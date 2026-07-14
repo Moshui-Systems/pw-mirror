@@ -11,6 +11,25 @@ jogo em cada cliente.
 > endereços fixos). Teste sempre em conta descartável; injeção mal feita = cliente
 > travado (como já vimos, processo elevado travado só sai com reboot).
 
+## Duas abordagens (leia isto primeiro)
+
+**A) Hook no ENVIO DE PACOTE (recomendada — mais simples).**
+Quando o client manda a ação pro servidor, o alvo já é o **ID global** do objeto (o
+mesmo pra todos os clients), não um ponteiro por-processo. Então:
+- hooka **uma** função (o `SendPacket` interno do client, ainda em claro);
+- no master, captura o pacote da ação;
+- manda cada slave chamar o **próprio** `SendPacket` com o mesmo comando.
+Sem tradução de ponteiro. Cada slave envia pela sua conexão (sessão/sequência corretas).
+O muro do "ponteiro por-processo" **não existe** aqui.
+
+**B) Hook nas funções de LÓGICA do jogo (`SelectTarget`, `CastSkill`…).**
+Mais trabalho: várias funções e é preciso **traduzir o ID global → ponteiro local** em
+cada slave (Etapas 1-4 abaixo). Use como alternativa se a A não for viável (ex.: se não
+achar um ponto em claro antes da cifra).
+
+> O resto deste documento (Etapas 1-4) descreve a abordagem B. Para a A, ver
+> "Abordagem A — detalhe" no fim.
+
 ## Ferramentas
 - **Cheat Engine** — achar structs (player, entity list, alvo) e fazer "find out what
   writes/accesses this address".
@@ -79,3 +98,49 @@ use-o na tradução. Se ela já recebe ID, melhor ainda.
 
 Quando a Etapa 1/2 estiverem mapeadas (endereços/offsets/assinaturas), me passa os
 números e eu escrevo o código da DLL (MinHook + IPC + tradução de ID).
+
+---
+
+## Abordagem A — detalhe (hook no envio de pacote)
+
+### A1 — Achar a função de envio de pacote
+Opções, da melhor pra pior:
+1. **`SendPacket` interno do client** (em claro): procure a função que monta o pacote
+   antes de cifrar. Como achar:
+   - x64dbg: breakpoint em `ws2_32.send` e `ws2_32.WSASend`. Faça uma ação (skill).
+     Suba a Call Stack: as funções acima do `send` são a pilha de rede do client. A que
+     recebe o buffer **em claro** (antes da que cifra) é o alvo. Frequentemente há uma
+     função tipo `SendPacket(this, opcode, buffer, len)`.
+   - Confirme vendo o buffer: logo após uma ação, ele deve conter o **opcode** + o **ID
+     do alvo** (compare com o ID achado no jogo — ex.: selecione o NPC e veja o número
+     aparecer no buffer).
+2. Se tudo estiver cifrado até o socket, hooke a função **de cifra** e pegue o buffer
+   antes dela (o argumento de entrada dela é o pacote em claro).
+
+Anote: endereço (relativo à base do módulo), assinatura, e a **calling convention**
+(quais registradores = opcode/buffer/len).
+
+### A2 — Entender o mínimo do formato
+Você não precisa decodificar tudo. Precisa saber:
+- Onde está o **opcode** (pra filtrar quais pacotes replicar: skill, alvo, item, move…).
+- Que o **ID do alvo** dentro do payload é o ID global (confirmado comparando entre
+  clients: o mesmo NPC tem o mesmo número nos dois).
+Faça um log: hooke o envio e escreva `opcode + hex do buffer` num arquivo enquanto joga.
+Manda esse log que a gente identifica os opcodes de ação juntos.
+
+### A3 — Replicar
+Na DLL (com MinHook):
+- Hook em `SendPacket`.
+- Se este processo é o **master** (janela em foco) e o opcode está na lista de ações:
+  publica `{opcode, bytes do payload}` via IPC (named pipe `\\.\pipe\MirrorHook`).
+- Sempre: deixa o pacote original seguir.
+- Um listener em cada processo recebe do pipe e, se **não** for o master, chama o
+  `SendPacket` local com os mesmos bytes → o slave executa a ação pela sua conexão.
+- Coordenação master/slave: quem tem `GetForegroundWindow()` == sua janela é o master.
+
+### A4 — Cuidados
+- Filtrar bem os opcodes (não replicar login/heartbeat/chat sem querer).
+- Movimento é por coordenada de mundo (global) — replicar deixa todos irem pro mesmo
+  ponto (formação). Deixar isso opcional.
+- Reentrância: ao chamar `SendPacket` no slave, marque uma flag pra o seu próprio hook
+  não re-publicar aquilo (senão loop entre clients).
