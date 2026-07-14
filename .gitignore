@@ -1,0 +1,31 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+build_out/
+build_test/
+build_release/
+publish/
+*.dll
+!Perfect Launcher/**/lib/**/*.dll
+
+# Visual Studio / Rider
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Claude Code
+.claude/
+CLAUDE.local.md
+
+# NuGet
+packages/
+*.nupkg
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
