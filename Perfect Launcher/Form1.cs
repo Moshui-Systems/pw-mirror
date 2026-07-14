@@ -65,7 +65,7 @@ namespace Perfect_Launcher
         {
             InitializeComponent();
 
-            versão1000ToolStripMenuItem.Text = $"Versão {Assembly.GetEntryAssembly().GetName().Version}";
+            versão1000ToolStripMenuItem.Text = $"Perfect Mirror v{Assembly.GetEntryAssembly().GetName().Version}";
 
             ScrollTextDefaultValue = labelGlobal.Top;
 
@@ -477,6 +477,235 @@ namespace Perfect_Launcher
             Mirror = new InputMirror(GetClientWindowHandles);
         }
 
+        // Se a lista de contas estiver vazia, procura o user.config mais recente de
+        // versões anteriores do app (Perfect_Launcher / Perfect_Mirror, em qualquer
+        // empresa) e importa User/Passwd/Classe/Combo de lá. Conserta o "sumiço" de
+        // contas quando o nome/empresa do assembly muda.
+        private void MigrateAccountsIfEmpty()
+        {
+            try
+            {
+                if (Settings.Default.User != null &&
+                    Settings.Default.User.Cast<string>().Any(u => !string.IsNullOrWhiteSpace(u)))
+                    return; // já tem contas
+
+                string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+                var configs = Directory.GetDirectories(local)
+                    .SelectMany(dir => { try { return Directory.GetFiles(dir, "user.config", SearchOption.AllDirectories); } catch { return new string[0]; } })
+                    .Where(f => (f.IndexOf("Perfect_Launcher", StringComparison.OrdinalIgnoreCase) >= 0
+                              || f.IndexOf("Perfect_Mirror", StringComparison.OrdinalIgnoreCase) >= 0))
+                    .OrderByDescending(f => File.GetLastWriteTimeUtc(f));
+
+                foreach (var cfg in configs)
+                    if (ImportAccountsFrom(cfg))
+                    {
+                        Settings.Default.bFirstRun = false;
+                        Settings.Default.Save();
+                        WM.ShowMessage("Suas contas de uma versão anterior foram recuperadas.", 0);
+                        break;
+                    }
+            }
+            catch { /* melhor não travar a abertura por causa disso */ }
+        }
+
+        private bool ImportAccountsFrom(string configPath)
+        {
+            try
+            {
+                var doc = new System.Xml.XmlDocument();
+                doc.Load(configPath);
+
+                var users = ReadStringCollection(doc, "User");
+                if (users == null || !users.Cast<string>().Any(u => !string.IsNullOrWhiteSpace(u)))
+                    return false;
+
+                Settings.Default.User = users;
+
+                var passwd = ReadStringCollection(doc, "Passwd");
+                if (passwd != null) Settings.Default.Passwd = passwd;
+
+                var classe = ReadStringCollection(doc, "Classe");
+                if (classe != null) Settings.Default.Classe = classe;
+
+                var combo = ReadStringCollection(doc, "ComboQueue");
+                if (combo != null) Settings.Default.ComboQueue = combo;
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private System.Collections.Specialized.StringCollection ReadStringCollection(System.Xml.XmlDocument doc, string settingName)
+        {
+            var value = doc.SelectSingleNode("//setting[@name='" + settingName + "']/value");
+            if (value == null)
+                return null;
+
+            var col = new System.Collections.Specialized.StringCollection();
+            foreach (System.Xml.XmlNode s in value.SelectNodes(".//*[local-name()='string']"))
+                col.Add(s.InnerText);
+            return col;
+        }
+
+        // Aplica a identidade visual do Perfect Mirror: ícone, fundo escuro liso,
+        // logo/título nítidos e um layout mais limpo e moderno.
+        private void ApplyBranding()
+        {
+            this.Text = "Perfect Mirror";
+
+            var ico = Theme.LoadIcon("perfectmirror.ico");
+            if (ico != null)
+            {
+                this.Icon = ico;
+                notifyIcon1.Icon = ico;
+                notifyIcon1.Text = "Perfect Mirror";
+            }
+
+            // Fundo escuro liso (respeita um fundo que o usuário configurar em "Opções").
+            if (string.IsNullOrWhiteSpace(Settings.Default.BackgroundImg))
+            {
+                this.BackgroundImage = null;
+                this.BackColor = Theme.Bg;
+            }
+
+            int cw = this.ClientSize.Width;
+
+            // Banner de mensagens desativado
+            labelGlobal.Visible = false;
+            bBlockRoll = true;
+
+            // Logo nítido centralizado
+            var logo = Theme.LoadImage("moshui_logo.png");
+            if (logo != null)
+            {
+                var pic = new PictureBox
+                {
+                    Image = logo,
+                    SizeMode = PictureBoxSizeMode.Zoom,
+                    Size = new Size(78, 78),
+                    Location = new Point((cw - 78) / 2, 30),
+                    BackColor = Color.Transparent
+                };
+                this.Controls.Add(pic);
+            }
+
+            this.Controls.Add(new Label
+            {
+                Text = "PERFECT MIRROR",
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 21f, FontStyle.Bold),
+                ForeColor = Theme.Text,
+                BackColor = Color.Transparent,
+                Size = new Size(cw, 38),
+                Location = new Point(0, 114)
+            });
+            this.Controls.Add(new Label
+            {
+                Text = "by Moshui Systems",
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Regular),
+                ForeColor = Theme.Accent,
+                BackColor = Color.Transparent,
+                Size = new Size(cw, 20),
+                Location = new Point(0, 152)
+            });
+
+            // ---- Card central com as contas e ações ----
+            int cardW = 440, cardH = 176;
+            var card = new Panel
+            {
+                Size = new Size(cardW, cardH),
+                Location = new Point((cw - cardW) / 2, 192),
+                BackColor = Theme.Panel
+            };
+            this.Controls.Add(card);
+
+            card.Controls.Add(new Label
+            {
+                Text = "CONTA",
+                AutoSize = true,
+                Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+                ForeColor = Theme.TextDim,
+                Location = new Point(18, 12)
+            });
+
+            // Reaproveita os controles existentes, só reposiciona dentro do card
+            card.Controls.Add(usersComboBox);
+            usersComboBox.Location = new Point(18, 32);
+            usersComboBox.Size = new Size(300, 26);
+            StyleCombo(usersComboBox);
+
+            card.Controls.Add(AddUserButton);
+            AddUserButton.Location = new Point(326, 31);
+            AddUserButton.Size = new Size(44, 28);
+
+            card.Controls.Add(RemoveUserButton);
+            RemoveUserButton.Location = new Point(378, 31);
+            RemoveUserButton.Size = new Size(44, 28);
+
+            card.Controls.Add(openButton);
+            openButton.Text = "ABRIR CONTA";
+            openButton.Location = new Point(18, 76);
+            openButton.Size = new Size(404, 36);
+
+            var btnAll = new Button
+            {
+                Text = "ABRIR TODAS",
+                Location = new Point(18, 122),
+                Size = new Size(197, 34),
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold)
+            };
+            btnAll.Click += (s, e) => abrirTODASAsContasToolStripMenuItem_Click(s, e);
+
+            var btnCombar = new Button
+            {
+                Text = "COMBAR",
+                Location = new Point(225, 122),
+                Size = new Size(197, 34),
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold)
+            };
+            btnCombar.Click += (s, e) => combarComAPTToolStripMenuItem_Click(s, e);
+
+            card.Controls.Add(btnAll);
+            card.Controls.Add(btnCombar);
+
+            // Tema em todos os botões
+            Theme.StyleButtons(this);
+
+            // Destaca as ações primárias com a cor de destaque
+            foreach (var b in new[] { openButton, btnAll, btnCombar })
+            {
+                b.BackColor = Theme.Accent;
+                b.FlatAppearance.MouseOverBackColor = Theme.AccentHover;
+                b.ForeColor = Color.White;
+            }
+        }
+
+        // ComboBox no tema escuro (owner-draw, sem o azul do sistema na seleção)
+        private void StyleCombo(ComboBox cb)
+        {
+            cb.FlatStyle = FlatStyle.Flat;
+            cb.BackColor = Theme.Panel;
+            cb.ForeColor = Theme.Text;
+            cb.DrawMode = DrawMode.OwnerDrawFixed;
+            cb.DrawItem += (s, e) =>
+            {
+                var combo = (ComboBox)s;
+                bool sel = (e.State & DrawItemState.Selected) != 0;
+                using (var bg = new SolidBrush(sel ? Theme.Accent : Theme.Panel))
+                    e.Graphics.FillRectangle(bg, e.Bounds);
+                if (e.Index >= 0)
+                    using (var fg = new SolidBrush(Theme.Text))
+                        e.Graphics.DrawString(combo.Items[e.Index].ToString(), e.Font, fg, e.Bounds.X + 3, e.Bounds.Y + 2);
+            };
+        }
+
         private async void RollGlobalMessages()
         {
             if (bBlockRoll)
@@ -644,14 +873,18 @@ namespace Perfect_Launcher
 
             RollGlobalMessages();
             DownloadMessages();
+
+            // Recupera as contas de versões antigas do app (ex.: quando o nome/empresa
+            // mudou e o Windows passou a guardar as settings em outra pasta).
+            MigrateAccountsIfEmpty();
+
             RefreshUsernamesOnComboBox();
 
             // Inicia o motor de espelhamento de comandos (teclado/mouse)
             SetupMirror();
 
-            // Aplica o visual da Moshui Systems aos botões (o fundo continua
-            // sendo o que o usuário configurar em "Customizar").
-            Theme.StyleButtons(this);
+            // Aplica a identidade Perfect Mirror (Moshui Systems)
+            ApplyBranding();
 
             CheckForClientUpdates();
 
@@ -952,6 +1185,16 @@ namespace Perfect_Launcher
             notifyIcon1.Visible = true;
             Hide();
 
+            // Ao minimizar com contas abertas, abre automaticamente a janela do Combar
+            // (é a tela usada durante o jogo, com o espelho e a troca de contas).
+            if (RGames.Count > 0)
+            {
+                if (ComboForm == null)
+                    ComboForm = new Combo(this);
+                ComboForm.Show();
+                ComboForm.BringToFront();
+            }
+
             // Exibe a mensagem explicando que o programa foi minimizado
             // (caso seja a primeira vez que o programa foi aberto)
             if (Settings.Default.bFirstRun)
@@ -990,35 +1233,14 @@ namespace Perfect_Launcher
             }
         }
 
-        private async void DownloadMessages()
+        private void DownloadMessages()
         {
-            // Tem internet?
-            if (!CheckForInternetConnection())
+            // Mensagens do banner (estáticas, marca Moshui Systems).
+            MsgGlobal = new[]
             {
-                labelGlobal.Text = "Sem conexão com a internet.";
-                return;
-            }
-
-            // Verifica se tem internet e se já passou 1h desde o último request pro global
-            string hour = DateTime.Now.ToString("HH");
-
-            if (hour != Settings.Default.LastGlobalUpdate)
-            {
-                // Pede um novo request, salva no bloco de notas
-                WebClient wc = new WebClient();
-                wc.Encoding = Encoding.UTF8;
-                string url = "https://pastebin.com/raw/1B7k6kFa";
-                string content = wc.DownloadString(url);
-
-                await Task.Delay(50);
-
-                File.WriteAllText(Application.StartupPath + "\\Perfect Launcher\\Global.txt", content, Encoding.UTF8);
-            }
-
-            MsgGlobal = File.ReadAllLines(Application.StartupPath + "\\Perfect Launcher\\Global.txt", Encoding.UTF8);
-
-            // Salva o último horário atualizado
-            Settings.Default.LastGlobalUpdate = hour;
+                "Perfect Mirror — by Moshui Systems",
+                "Espelhe teclado e mouse em todas as contas. Bom jogo!"
+            };
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -1197,7 +1419,7 @@ namespace Perfect_Launcher
 
         private void twitterToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Process.Start("https://twitter.com/LibardiFelipe");
+            Process.Start("https://github.com/Moshui-Systems");
         }
 
         private void customizarToolStripMenuItem1_Click(object sender, EventArgs e)

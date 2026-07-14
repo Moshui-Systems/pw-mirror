@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // As informações gerais sobre um assembly são controladas por
 // conjunto de atributos. Altere estes valores de atributo para modificar as informações
 // associadas a um assembly.
-[assembly: AssemblyTitle("Perfect Launcher")]
-[assembly: AssemblyDescription("Gerenciador de contas para Perfect World")]
+[assembly: AssemblyTitle("Perfect Mirror")]
+[assembly: AssemblyDescription("Launcher multi-conta com espelhamento de comandos para Perfect World")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Libardi")]
-[assembly: AssemblyProduct("Perfect Launcher")]
-[assembly: AssemblyCopyright("Copyright © Felipe Libardi 2021")]
+[assembly: AssemblyCompany("Moshui Systems")]
+[assembly: AssemblyProduct("Perfect Mirror")]
+[assembly: AssemblyCopyright("Copyright © Moshui Systems 2026")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

@@ -346,7 +346,7 @@
             this.labelGlobal.Name = "labelGlobal";
             this.labelGlobal.Size = new System.Drawing.Size(664, 25);
             this.labelGlobal.TabIndex = 0;
-            this.labelGlobal.Text = "Bem-vindo ao Perfect Launcher!";
+            this.labelGlobal.Text = "Perfect Mirror — by Moshui Systems";
             this.labelGlobal.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.labelGlobal.Click += new System.EventHandler(this.labelGlobal_Click);
             // 
@@ -386,7 +386,6 @@
             this.menuStrip1.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.toolStripMenuItem1,
-            this.toolStripMenuItem2,
             this.toolStripMenuItem3,
             this.toolStripMenuItem4,
             this.customizarToolStripMenuItem});
@@ -406,14 +405,13 @@
             this.versão1000ToolStripMenuItem});
             this.toolStripMenuItem1.Name = "toolStripMenuItem1";
             this.toolStripMenuItem1.Size = new System.Drawing.Size(56, 20);
-            this.toolStripMenuItem1.Text = "Libardi";
+            this.toolStripMenuItem1.Text = "Moshui";
             // 
             // twitterToolStripMenuItem
             // 
-            this.twitterToolStripMenuItem.Image = ((System.Drawing.Image)(resources.GetObject("twitterToolStripMenuItem.Image")));
             this.twitterToolStripMenuItem.Name = "twitterToolStripMenuItem";
             this.twitterToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
-            this.twitterToolStripMenuItem.Text = "Contato (Twitter)";
+            this.twitterToolStripMenuItem.Text = "Moshui Systems (GitHub)";
             this.twitterToolStripMenuItem.Click += new System.EventHandler(this.twitterToolStripMenuItem_Click);
             // 
             // notasDeAtualizaçãoToolStripMenuItem
@@ -713,7 +711,7 @@
             this.MaximizeBox = false;
             this.Name = "Form1";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Perfect Launcher";
+            this.Text = "Perfect Mirror";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
             this.Load += new System.EventHandler(this.Form1_Load);
             this.contextMenuStrip1.ResumeLayout(false);

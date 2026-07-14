@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Reflection;
 using System.Windows.Forms;
 
 namespace Perfect_Launcher
@@ -70,6 +71,30 @@ namespace Perfect_Launcher
 
             root.BackColor = Bg;
             root.ForeColor = Text;
+        }
+
+        // Carrega uma imagem embutida (EmbeddedResource) como Bitmap independente.
+        public static Image LoadImage(string resourceFile)
+        {
+            var asm = Assembly.GetExecutingAssembly();
+            using (var s = asm.GetManifestResourceStream("Perfect_Launcher." + resourceFile))
+            {
+                if (s == null) return null;
+                using (var img = Image.FromStream(s))
+                    return new Bitmap(img);
+            }
+        }
+
+        // Carrega um ícone embutido (EmbeddedResource).
+        public static Icon LoadIcon(string resourceFile)
+        {
+            var asm = Assembly.GetExecutingAssembly();
+            using (var s = asm.GetManifestResourceStream("Perfect_Launcher." + resourceFile))
+            {
+                if (s == null) return null;
+                using (var ico = new Icon(s))
+                    return (Icon)ico.Clone();
+            }
         }
 
         private static void StyleButton(Button b)

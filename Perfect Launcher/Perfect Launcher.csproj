@@ -7,7 +7,7 @@
     <ProjectGuid>{C2513B46-EFB1-4A76-B69A-D8F3DB294E92}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <RootNamespace>Perfect_Launcher</RootNamespace>
-    <AssemblyName>Perfect Launcher</AssemblyName>
+    <AssemblyName>Perfect Mirror</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -51,7 +51,7 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>pwicon.ico</ApplicationIcon>
+    <ApplicationIcon>perfectmirror.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
@@ -192,6 +192,8 @@
     <Compile Include="ManageUsers.cs" />
     <Compile Include="Mirror.cs" />
     <Compile Include="Theme.cs" />
+    <EmbeddedResource Include="perfectmirror.ico" />
+    <EmbeddedResource Include="moshui_logo.png" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RunningGames.cs" />

@@ -29,11 +29,11 @@ Um launcher que abre várias contas do PW de uma vez e tem um **Espelho (Mirror)
 ## 📦 Instalação
 
 1. Baixe **todos os arquivos** da release (o `.exe` vem com 6 `.dll` de apoio — precisa de todos):
-   - `Perfect Launcher.exe` + `Perfect Launcher.exe.config`
+   - `Perfect Mirror.exe` + `Perfect Mirror.exe.config`
    - `System.Resources.Extensions.dll`, `System.Memory.dll`, `System.Buffers.dll`, `System.Numerics.Vectors.dll`, `System.Runtime.CompilerServices.Unsafe.dll`
 2. Jogue **todos** na **pasta raiz** do seu PW — a que tem a pasta `x64` e a `userdata` dentro.
    > ⚠️ Não coloque dentro de `x64`. Tem que ser na pasta de cima. E não esqueça nenhum `.dll`, senão o launcher não abre.
-3. Abra o `Perfect Launcher.exe`. Pronto.
+3. Abra o `Perfect Mirror.exe`. Pronto.
 
 ## 🪞 Como usar o Espelho
 

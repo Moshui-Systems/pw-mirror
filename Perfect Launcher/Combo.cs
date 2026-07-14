@@ -807,6 +807,10 @@ namespace Perfect_Launcher
             // Aplica o tema escuro da Moshui Systems
             Theme.ApplyDark(this);
 
+            var ico = Theme.LoadIcon("perfectmirror.ico");
+            if (ico != null)
+                this.Icon = ico;
+
             // Hooka as teclas
             HookKeys();
 
