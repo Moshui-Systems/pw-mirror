@@ -649,6 +649,10 @@ namespace Perfect_Launcher
             // Inicia o motor de espelhamento de comandos (teclado/mouse)
             SetupMirror();
 
+            // Aplica o visual da Moshui Systems aos botões (o fundo continua
+            // sendo o que o usuário configurar em "Customizar").
+            Theme.StyleButtons(this);
+
             CheckForClientUpdates();
 
             // Reseta a checkbox da torre do martírio caso seja quarta-feira

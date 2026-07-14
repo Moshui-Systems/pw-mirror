@@ -169,6 +169,7 @@
     </Compile>
     <Compile Include="ManageUsers.cs" />
     <Compile Include="Mirror.cs" />
+    <Compile Include="Theme.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RunningGames.cs" />

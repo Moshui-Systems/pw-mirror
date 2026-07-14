@@ -102,8 +102,8 @@ namespace Perfect_Launcher
         // Lista de contas abertas
         List<RunningGames> RGames = new List<RunningGames>();
 
-        // Item de menu que liga/desliga o espelhamento de comandos (mirror)
-        private ToolStripMenuItem espelharComandosMenuItem;
+        // Checkbox visível que liga/desliga o espelhamento de comandos (mirror)
+        private CheckBox espelharCheckBox;
 
         // Força o paramento da sequência
         bool bForceStop = false;
@@ -804,44 +804,58 @@ namespace Perfect_Launcher
 
         private void Combo_Load_1(object sender, EventArgs e)
         {
+            // Aplica o tema escuro da Moshui Systems
+            Theme.ApplyDark(this);
+
             // Hooka as teclas
             HookKeys();
 
-            // Adiciona o controle do espelhamento no menu de opções (botão ">>")
+            // Cria o checkbox visível do espelhamento (mirror)
             SetupMirrorToggle();
 
             UpdateListBox1();
         }
 
-        // Adiciona a opção "Espelhar comandos (Mirror)" ao menu de opções do Combo.
-        // O motor do mirror em si vive na Form1; aqui só ligamos/desligamos.
+        // Cria um checkbox visível "Espelhar" na janela do Combar. O motor do mirror
+        // vive na Form1; aqui só ligamos/desligamos e mantemos o check sincronizado
+        // com a tecla de atalho Pause/Break.
         private void SetupMirrorToggle()
         {
             if (f1 == null || f1.Mirror == null)
                 return;
 
-            espelharComandosMenuItem = new ToolStripMenuItem("Espelhar comandos (Mirror)")
+            espelharCheckBox = new CheckBox
             {
-                CheckOnClick = true,
+                Text = "Espelhar",
+                AutoSize = false,
+                Location = new System.Drawing.Point(363, 392),
+                Size = new System.Drawing.Size(108, 22),
+                ForeColor = Theme.Accent,
+                Font = new System.Drawing.Font("Segoe UI", 9f, System.Drawing.FontStyle.Bold),
                 Checked = f1.Mirror.Enabled,
-                ToolTipText = "Envia teclado e mouse da conta ativa para TODAS as outras contas abertas.\n" +
-                              "Também pode ligar/desligar em jogo pela tecla Pause/Break."
+                Cursor = Cursors.Hand
             };
-            espelharComandosMenuItem.CheckedChanged += (s, e) => f1.Mirror.Enabled = espelharComandosMenuItem.Checked;
 
-            // Se ligar/desligar pela tecla Pause, mantém o check do menu sincronizado.
+            var tip = new ToolTip();
+            tip.SetToolTip(espelharCheckBox,
+                "Envia teclado e mouse da conta ativa para TODAS as outras contas abertas.\n" +
+                "Também liga/desliga pela tecla Pause/Break.");
+
+            espelharCheckBox.CheckedChanged += (s, e) => f1.Mirror.Enabled = espelharCheckBox.Checked;
+
+            // Se ligar/desligar pela tecla Pause, mantém o checkbox sincronizado.
             f1.Mirror.StateChanged += OnMirrorStateChanged;
 
-            contextMenuStrip1.Items.Add(new ToolStripSeparator());
-            contextMenuStrip1.Items.Add(espelharComandosMenuItem);
+            tabPage1.Controls.Add(espelharCheckBox);
+            espelharCheckBox.BringToFront();
         }
 
         private void OnMirrorStateChanged(bool on)
         {
-            if (espelharComandosMenuItem == null || espelharComandosMenuItem.Checked == on)
+            if (espelharCheckBox == null || espelharCheckBox.Checked == on)
                 return;
 
-            try { BeginInvoke((Action)(() => espelharComandosMenuItem.Checked = on)); }
+            try { BeginInvoke((Action)(() => espelharCheckBox.Checked = on)); }
             catch { }
         }
 
