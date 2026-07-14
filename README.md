@@ -58,4 +58,4 @@ O `.exe` sai em `Perfect Launcher/bin/x64/Release/`. Distribua a pasta **inteira
 
 ## 🙏 Créditos
 
-Baseado no launcher original de [Felipe Libardi](https://github.com/LibardiFelipe/Perfect-Launcher). Espelhamento, correções e rebrand por **Moshui Systems**.
+O **Perfect Mirror** é baseado no **[Perfect Launcher](https://github.com/LibardiFelipe/Perfect-Launcher)**, criado originalmente por [Felipe Libardi](https://github.com/LibardiFelipe) — todo o crédito do launcher base é dele. O espelhamento de comandos, as correções e o rebrand são da **Moshui Systems**.

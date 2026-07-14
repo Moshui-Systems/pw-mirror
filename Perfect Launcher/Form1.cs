@@ -557,6 +557,11 @@ namespace Perfect_Launcher
         {
             this.Text = "Perfect Mirror";
 
+            // Tamanho fixo: o layout usa posições absolutas, então redimensionar
+            // desalinharia o card e o fundo.
+            this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;
+
             var ico = Theme.LoadIcon("perfectmirror.ico");
             if (ico != null)
             {
@@ -580,11 +585,13 @@ namespace Perfect_Launcher
 
             int cw = this.ClientSize.Width;
 
-            // Sem banner e sem rodapé
+            // Sem banner e sem rodapé (esconde o painel e a linha "border")
             labelGlobal.Visible = false;
             bBlockRoll = true;
             if (panel1 != null)
                 panel1.Visible = false;
+            if (border1 != null)
+                border1.Visible = false;
 
             this.Controls.Add(new Label
             {
@@ -595,7 +602,18 @@ namespace Perfect_Launcher
                 ForeColor = Theme.Text,
                 BackColor = Color.Transparent,
                 Size = new Size(cw, 44),
-                Location = new Point(0, 92)
+                Location = new Point(0, 84)
+            });
+            this.Controls.Add(new Label
+            {
+                Text = "by Moshui Systems",
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Regular),
+                ForeColor = Theme.Accent,
+                BackColor = Color.Transparent,
+                Size = new Size(cw, 20),
+                Location = new Point(0, 130)
             });
 
             // ---- Card central com as contas e ações ----
