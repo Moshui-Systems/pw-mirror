@@ -28,9 +28,11 @@ Um launcher que abre várias contas do PW de uma vez e tem um **Espelho (Mirror)
 
 ## 📦 Instalação
 
-1. Baixe o `Perfect Launcher.exe` **e** o `System.Resources.Extensions.dll` (os dois juntos).
-2. Coloque os dois na **pasta raiz** do seu PW — a que tem a pasta `x64` e a `userdata` dentro.
-   > ⚠️ Não coloque dentro de `x64`. Tem que ser na pasta de cima.
+1. Baixe **todos os arquivos** da release (o `.exe` vem com 6 `.dll` de apoio — precisa de todos):
+   - `Perfect Launcher.exe` + `Perfect Launcher.exe.config`
+   - `System.Resources.Extensions.dll`, `System.Memory.dll`, `System.Buffers.dll`, `System.Numerics.Vectors.dll`, `System.Runtime.CompilerServices.Unsafe.dll`
+2. Jogue **todos** na **pasta raiz** do seu PW — a que tem a pasta `x64` e a `userdata` dentro.
+   > ⚠️ Não coloque dentro de `x64`. Tem que ser na pasta de cima. E não esqueça nenhum `.dll`, senão o launcher não abre.
 3. Abra o `Perfect Launcher.exe`. Pronto.
 
 ## 🪞 Como usar o Espelho
@@ -52,7 +54,7 @@ Precisa do **.NET SDK** (8+). Na raiz do projeto:
 dotnet build "Perfect Launcher.sln" -c Release -p:Platform=x64
 ```
 
-O `.exe` sai em `Perfect Launcher/bin/x64/Release/`. Lembre de levar o `System.Resources.Extensions.dll` junto.
+O `.exe` sai em `Perfect Launcher/bin/x64/Release/`. Distribua a pasta **inteira** (o `.exe`, o `.config` e todos os `.dll` gerados juntos).
 
 ## 🙏 Créditos
 

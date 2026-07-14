@@ -4,6 +4,7 @@
 build_out/
 build_test/
 build_release/
+dist/
 publish/
 *.dll
 !Perfect Launcher/**/lib/**/*.dll
