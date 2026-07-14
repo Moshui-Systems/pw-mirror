@@ -26,6 +26,10 @@ CLAUDE.local.md
 packages/
 *.nupkg
 
+# MirrorHook build outputs (compilados localmente com g++)
+MirrorHook/*.exe
+MirrorHook/*.o
+
 # OS
 Thumbs.db
 desktop.ini
