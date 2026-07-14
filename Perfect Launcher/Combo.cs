@@ -503,7 +503,9 @@ namespace Perfect_Launcher
             SaveComboQueue();
         }
 
-        // Persiste a fila do combo (nomes das contas) para restaurar depois.
+        // Atualiza a fila do combo (nomes das contas) na memória. NÃO grava em disco
+        // aqui: isto é chamado a cada refresh (inclusive ao abrir/fechar cada conta),
+        // e gravar toda vez travava a interface. O disco é gravado ao fechar o combar.
         private void SaveComboQueue()
         {
             try
@@ -512,7 +514,6 @@ namespace Perfect_Launcher
                 foreach (int i in IndexQueue)
                     if (i >= 0 && i < Settings.Default.User.Count && !string.IsNullOrWhiteSpace(Settings.Default.User[i]))
                         Settings.Default.ComboQueue.Add(Settings.Default.User[i]);
-                Settings.Default.Save();
             }
             catch { }
         }
@@ -562,6 +563,10 @@ namespace Perfect_Launcher
             // Para de escutar as mudanças de estado do mirror (evita vazamento).
             if (f1 != null && f1.Mirror != null)
                 f1.Mirror.StateChanged -= OnMirrorStateChanged;
+
+            // Grava a fila do combo em disco (uma vez só, ao fechar).
+            SaveComboQueue();
+            try { Settings.Default.Save(); } catch { }
 
             f1.ComboForm = null;
         }

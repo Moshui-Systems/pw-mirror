@@ -1621,7 +1621,7 @@ namespace Perfect_Launcher
             fa.ShowDialog();
         }
 
-        private void abrirTODASAsContasToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void abrirTODASAsContasToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (usersComboBox.Items.Count <= 0)
                 return;
@@ -1634,7 +1634,8 @@ namespace Perfect_Launcher
                 for (int i = 0; i < qtContas; i++)
                 {
                     OpenGame(i, IgnorarAbertas: true);
-                    Thread.Sleep(800);
+                    // await (não Thread.Sleep) para não travar a interface durante a abertura
+                    await Task.Delay(800);
                 }
             }
         }
