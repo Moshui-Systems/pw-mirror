@@ -929,7 +929,10 @@ namespace Perfect_Launcher
 
         private void listBox1_DoubleClick(object sender, EventArgs e)
         {
-            if (listBox1.SelectedItem != null || !bChangeBlocked)
+            // Precisa ter um item selecionado E não estar bloqueado; senão dava
+            // NullReferenceException ao ler SelectedItem.ToString() com item nulo
+            // (ex.: duplo-clique na lista depois de fechar uma conta).
+            if (listBox1.SelectedItem != null && !bChangeBlocked)
             {
                 if (ProcessQueue.Count > listBox2.SelectedIndex)
                 {
