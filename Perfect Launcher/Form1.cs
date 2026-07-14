@@ -100,11 +100,20 @@ namespace Perfect_Launcher
             if (!File.Exists(Application.StartupPath + "\\" + Exe32))
                 Settings.Default.bUse64 = true;
 
-            // Verifica se o programa já se encontra aberto
+            // Verifica se o programa já se encontra aberto. Só conta outra instância
+            // que esteja RESPONDENDO — uma instância travada (não respondendo) não
+            // deve impedir a abertura de uma nova.
+            int myId = Process.GetCurrentProcess().Id;
             string PName = Process.GetCurrentProcess().ProcessName;
-            Process[] p = Process.GetProcessesByName(PName);
-            // TODO: Maximizar a janela do programa aberto ao invés de fecha-lá
-            if (p.Length > 1)
+            int outrasVivas = 0;
+            foreach (Process pr in Process.GetProcessesByName(PName))
+            {
+                if (pr.Id == myId)
+                    continue;
+                try { if (pr.Responding) outrasVivas++; }
+                catch { }
+            }
+            if (outrasVivas > 0)
                 WM.ShowMessage("O programa já está em execução.", 0, false, true);
 
             // Prepara o programa para o primeiro uso
