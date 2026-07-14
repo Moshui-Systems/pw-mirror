@@ -191,6 +191,10 @@
     </Compile>
     <Compile Include="ManageUsers.cs" />
     <Compile Include="Mirror.cs" />
+    <Compile Include="MacroEngine.cs" />
+    <Compile Include="FormMacros.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Theme.cs" />
     <EmbeddedResource Include="perfectmirror.ico" />
     <EmbeddedResource Include="moshui_logo.png" />

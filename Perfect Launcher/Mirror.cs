@@ -42,6 +42,9 @@ namespace Perfect_Launcher
 
         // LLKHF_EXTENDED (bit 0 do campo flags do KBDLLHOOKSTRUCT)
         const uint LLKHF_EXTENDED = 0x01;
+        // Flag de input injetado (SendInput) — teclado bit 4, mouse bit 0.
+        const uint LLKHF_INJECTED = 0x10;
+        const uint LLMHF_INJECTED = 0x01;
 
         [StructLayout(LayoutKind.Sequential)]
         struct KBDLLHOOKSTRUCT
@@ -179,6 +182,10 @@ namespace Perfect_Launcher
                 int msg = wParam.ToInt32();
                 var data = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
 
+                // Ignora input gerado por SendInput (ex.: macros) para não re-espelhá-lo.
+                if ((data.flags & LLKHF_INJECTED) != 0)
+                    return CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+
                 // Tecla de liga/desliga (consumida para não vazar para o jogo)
                 if ((msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) && (Keys)data.vkCode == ToggleKey)
                 {
@@ -268,7 +275,9 @@ namespace Perfect_Launcher
             {
                 int msg = wParam.ToInt32();
                 var data = (MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(MSLLHOOKSTRUCT));
-                BroadcastMouse(msg, data);
+                // Ignora movimento/clique gerado por SendInput (macros).
+                if ((data.flags & LLMHF_INJECTED) == 0)
+                    BroadcastMouse(msg, data);
             }
 
             return CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);

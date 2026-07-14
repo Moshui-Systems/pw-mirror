@@ -35,6 +35,10 @@ namespace Perfect_Launcher
         // Controlado pela janela do Combo (Combar) e pela tecla Pause/Break.
         public InputMirror Mirror { get; private set; }
 
+        // Motor de macros (tecla de atalho -> sequência, na conta atual ou em todas).
+        public MacroEngine MacroEng { get; private set; }
+        string _macrosPath;
+
         // Fechar ou minizar? (minimiza antes de fechar primeiro)
         bool bShouldClose = false;
 
@@ -457,24 +461,70 @@ namespace Perfect_Launcher
 
         public List<RunningGames> GetRunningGames() { return RGames; }
 
-        // Retorna os handles das janelas principais de todas as contas abertas.
-        // Usado pelo InputMirror para saber para quais janelas reenviar os comandos.
+        // True se o processo é um cliente do PW (elementclient*, ou o executável custom).
+        public static bool IsPwClient(Process p)
+        {
+            try
+            {
+                if (p.ProcessName.IndexOf("elementclient", StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+
+                string custom = Settings.Default.ExecutavelCustom;
+                if (!string.IsNullOrWhiteSpace(custom))
+                {
+                    string customName = Path.GetFileNameWithoutExtension(custom);
+                    if (p.ProcessName.Equals(customName, StringComparison.OrdinalIgnoreCase))
+                        return true;
+                }
+            }
+            catch { }
+            return false;
+        }
+
+        // Adota clientes do PW abertos que o launcher não rastreia (abertos por fora),
+        // registrando-os no RGames com um nome "? <pid>" para poderem aparecer na lista,
+        // ser clicados e adicionados ao combo.
+        public void AdoptUntrackedClients()
+        {
+            try
+            {
+                var known = new HashSet<int>();
+                foreach (var rg in RGames)
+                    known.Add(rg.ProcessId);
+
+                foreach (Process p in Process.GetProcesses())
+                {
+                    try
+                    {
+                        if (IsPwClient(p) && p.MainWindowHandle != IntPtr.Zero && !known.Contains(p.Id))
+                        {
+                            RGames.Add(new RunningGames { User = "? " + p.Id, ProcessId = p.Id });
+                            known.Add(p.Id);
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+        }
+
+        // Retorna os handles das janelas de TODOS os clientes do PW abertos — inclusive
+        // os que o launcher não abriu (assim o espelho acerta todos, não só os rastreados).
         public List<IntPtr> GetClientWindowHandles()
         {
             var handles = new List<IntPtr>();
-            for (int i = 0; i < RGames.Count; i++)
+            foreach (Process p in Process.GetProcesses())
             {
                 try
                 {
-                    Process p = Process.GetProcessById(RGames[i].ProcessId);
-                    IntPtr h = p.MainWindowHandle;
-                    if (h != IntPtr.Zero)
-                        handles.Add(h);
+                    if (IsPwClient(p))
+                    {
+                        IntPtr h = p.MainWindowHandle;
+                        if (h != IntPtr.Zero)
+                            handles.Add(h);
+                    }
                 }
-                catch
-                {
-                    // Processo já fechou; o crashwatch o removerá da lista.
-                }
+                catch { }
             }
             return handles;
         }
@@ -484,6 +534,25 @@ namespace Perfect_Launcher
         private void SetupMirror()
         {
             Mirror = new InputMirror(GetClientWindowHandles);
+        }
+
+        // Cria o motor de macros e o item de menu "Macros" (em Extras).
+        private void SetupMacros()
+        {
+            _macrosPath = Application.StartupPath + "\\Perfect Launcher\\macros.txt";
+
+            // Criado depois do mirror para que seu hook seja chamado primeiro na cadeia
+            // e possa "comer" a tecla de atalho antes de ela ser espelhada.
+            MacroEng = new MacroEngine(GetClientWindowHandles);
+            MacroEng.Macros = MacroEngine.Load(_macrosPath);
+
+            var item = new ToolStripMenuItem("Macros...");
+            item.Click += (s, e) =>
+            {
+                using (var fm = new FormMacros(MacroEng, _macrosPath))
+                    fm.ShowDialog(this);
+            };
+            toolStripMenuItem4.DropDownItems.Add(item);
         }
 
         // Se a lista de contas estiver vazia, procura o user.config mais recente de
@@ -892,6 +961,9 @@ namespace Perfect_Launcher
             // Inicia o motor de espelhamento de comandos (teclado/mouse)
             SetupMirror();
 
+            // Inicia o motor de macros
+            SetupMacros();
+
             // Aplica a identidade Perfect Mirror (Moshui Systems)
             ApplyBranding();
 
@@ -1000,6 +1072,15 @@ namespace Perfect_Launcher
                 // Se o processo NÃO estiver mais aberto
                 if (!IsProcessRunning(RGames[i].ProcessId))
                 {
+                    // Clientes não-rastreados ("? <pid>") só são removidos; não há
+                    // conta salva para reabrir.
+                    if (RGames[i].User != null && RGames[i].User.StartsWith("?"))
+                    {
+                        RGames.RemoveAt(i);
+                        i--;
+                        continue;
+                    }
+
                     // Verifica se foi um reportbug
                     if (WasReportBug())
                     {
@@ -1140,9 +1221,12 @@ namespace Perfect_Launcher
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            // Se realmente for fechar, libera os hooks do espelhamento
-            if (bShouldClose && Mirror != null)
-                Mirror.Dispose();
+            // Se realmente for fechar, libera os hooks do espelhamento e dos macros
+            if (bShouldClose)
+            {
+                if (Mirror != null) Mirror.Dispose();
+                if (MacroEng != null) MacroEng.Dispose();
+            }
 
             // É pra fechar ou pra minimizar?
             if (!bShouldClose)
@@ -1168,6 +1252,10 @@ namespace Perfect_Launcher
                     {
                         string User = RGames[i].User;
                         int pId = RGames[i].ProcessId;
+
+                        // Não salva clientes não-rastreados ("? <pid>") — não há conta para reabrir
+                        if (User != null && User.StartsWith("?"))
+                            continue;
 
                         // Adiciona neste formato {User}[ProcessID]
                         Settings.Default.UsersBeforeClosing.Add("[" + User + "]" + "{" + pId.ToString() + "}");

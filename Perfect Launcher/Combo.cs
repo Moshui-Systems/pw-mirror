@@ -429,13 +429,43 @@ namespace Perfect_Launcher
 
             foreach (string s in listBox1.SelectedItems)
             {
-                // Só adiciona caso o item ainda não exista na lista
-                if (!IndexQueue.Contains(Settings.Default.User.IndexOf(s)))
-                    IndexQueue.Add(Settings.Default.User.IndexOf(s));
+                int key = QueueKeyForUser(s);
+                if (key != int.MinValue && !IndexQueue.Contains(key))
+                    IndexQueue.Add(key);
             }
 
             // Atualiza a listbox2
             UpdateListBox2();
+        }
+
+        // Um item do IndexQueue: índice em Settings.User (>=0, conta real) ou -PID (cliente "?").
+        private int QueueKeyForUser(string user)
+        {
+            int idx = Settings.Default.User.IndexOf(user);
+            if (idx >= 0)
+                return idx;
+            foreach (RunningGames rg in RGames)
+                if (rg.User == user && rg.ProcessId > 0)
+                    return -rg.ProcessId;
+            return int.MinValue;
+        }
+
+        private string UserForKey(int key)
+        {
+            if (key >= 0)
+                return key < Settings.Default.User.Count ? Settings.Default.User[key] : null;
+            int pid = -key;
+            foreach (RunningGames rg in RGames)
+                if (rg.ProcessId == pid)
+                    return rg.User;
+            return null;
+        }
+
+        private string ClasseForKey(int key)
+        {
+            if (key >= 0 && key < Settings.Default.Classe.Count)
+                return Settings.Default.Classe[key];
+            return "?"; // cliente não-rastreado
         }
 
         private void UpdateListBox2()
@@ -451,13 +481,14 @@ namespace Perfect_Launcher
             {
                 try
                 {
-                    if (listBox1.Items.Contains(Settings.Default.User[IndexQueue[i]]))
+                    string user = UserForKey(IndexQueue[i]);
+                    if (user != null && listBox1.Items.Contains(user))
                     {
                         int tempOrdem = i + 1;
                         if (tempOrdem >= 10)
                             tempOrdem = 0;
-                        listBox2.Items.Add(tempOrdem.ToString() + ") " + Settings.Default.Classe[IndexQueue[i]]);
-                        listBox3.Items.Add(tempOrdem.ToString() + ") " + Settings.Default.Classe[IndexQueue[i]]);
+                        listBox2.Items.Add(tempOrdem.ToString() + ") " + ClasseForKey(IndexQueue[i]));
+                        listBox3.Items.Add(tempOrdem.ToString() + ") " + ClasseForKey(IndexQueue[i]));
                         Contador++;
                     }
                     else
@@ -478,20 +509,25 @@ namespace Perfect_Launcher
             // Atualiza a fila de processos
             ProcessQueue.Clear();
             for (int i = 0; i < IndexQueue.Count; i++)
+            {
+                string user = UserForKey(IndexQueue[i]);
+                if (user == null)
+                    continue;
                 foreach (RunningGames rg in RGames)
                     try
                     {
-                        if (rg.User == Settings.Default.User[IndexQueue[i]])
+                        if (rg.User == user)
                         {
                             ProcessQueue.Add(Process.GetProcessById(rg.ProcessId));
                             break;
                         }
                     }
-                    catch (Exception x)
+                    catch
                     {
 
                     }
-            
+            }
+
 
             // Seleciona o index selecionado anteriormente
             if (listBox2.Items.Count > SelectedIndex)
@@ -573,6 +609,9 @@ namespace Perfect_Launcher
 
         private void UpdateListBox1()
         {
+            // Adota clientes do PW abertos por fora (aparecem como "? <pid>")
+            f1.AdoptUntrackedClients();
+
             // Pega os jogos abertos
             RGames = f1.GetRunningGames();
 
@@ -920,7 +959,7 @@ namespace Perfect_Launcher
 
             // Depois o resto das contas é adicionado
             foreach (int i in IndexQueue)
-                if (Settings.Default.User[i] != null)
+                if (i >= 0 && i < Settings.Default.User.Count && Settings.Default.User[i] != null)
                     Contas += "\n" + Settings.Default.User[i];
 
             // Salva o arquivo
