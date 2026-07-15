@@ -192,6 +192,10 @@
     <Compile Include="ManageUsers.cs" />
     <Compile Include="Mirror.cs" />
     <Compile Include="MacroEngine.cs" />
+    <Compile Include="AutoClicker.cs" />
+    <Compile Include="FormAutoClicker.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="FormMacros.cs">
       <SubType>Form</SubType>
     </Compile>

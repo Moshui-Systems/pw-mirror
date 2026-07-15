@@ -39,6 +39,9 @@ namespace Perfect_Launcher
         public MacroEngine MacroEng { get; private set; }
         string _macrosPath;
 
+        // Auto-clicker (tecla liga/desliga; esquerdo/direito; cursor ou posição fixa).
+        public AutoClicker Clicker { get; private set; }
+
         // Fechar ou minizar? (minimiza antes de fechar primeiro)
         bool bShouldClose = false;
 
@@ -577,6 +580,20 @@ namespace Perfect_Launcher
             toolStripMenuItem4.DropDownItems.Add(item);
         }
 
+        // Cria o auto-clicker e o item de menu "Auto Clicker" (em Extras).
+        private void SetupAutoClicker()
+        {
+            Clicker = new AutoClicker();
+
+            var item = new ToolStripMenuItem("Auto Clicker...");
+            item.Click += (s, e) =>
+            {
+                using (var f = new FormAutoClicker(Clicker))
+                    f.ShowDialog(this);
+            };
+            toolStripMenuItem4.DropDownItems.Add(item);
+        }
+
         // Se a lista de contas estiver vazia, procura o user.config mais recente de
         // versões anteriores do app (Perfect_Launcher / Perfect_Mirror, em qualquer
         // empresa) e importa User/Passwd/Classe/Combo de lá. Conserta o "sumiço" de
@@ -986,6 +1003,9 @@ namespace Perfect_Launcher
             // Inicia o motor de macros
             SetupMacros();
 
+            // Inicia o auto-clicker
+            SetupAutoClicker();
+
             // Aplica a identidade Perfect Mirror (Moshui Systems)
             ApplyBranding();
 
@@ -1248,6 +1268,7 @@ namespace Perfect_Launcher
             {
                 if (Mirror != null) Mirror.Dispose();
                 if (MacroEng != null) MacroEng.Dispose();
+                if (Clicker != null) Clicker.Dispose();
                 if (_clientHandlesTimer != null) _clientHandlesTimer.Dispose();
             }
 
