@@ -57,6 +57,12 @@ namespace Perfect_Launcher
         [DllImport("user32.dll")]
         static extern bool SetCursorPos(int x, int y);
 
+        // Aumenta a resolução do timer do SO para o Sleep ficar preciso (~1ms).
+        [DllImport("winmm.dll")]
+        static extern uint timeBeginPeriod(uint uPeriod);
+        [DllImport("winmm.dll")]
+        static extern uint timeEndPeriod(uint uPeriod);
+
         IntPtr _hook = IntPtr.Zero;
         readonly HookProc _proc;
         readonly Thread _thread;
@@ -112,10 +118,16 @@ namespace Perfect_Launcher
 
         void ClickLoop()
         {
+            var sw = new Stopwatch();
+            bool highRes = false;
+
             while (!_disposed)
             {
                 if (_active)
                 {
+                    if (!highRes) { timeBeginPeriod(1); highRes = true; }
+
+                    sw.Restart();
                     try
                     {
                         if (UseFixedPoint)
@@ -123,13 +135,29 @@ namespace Perfect_Launcher
                         Click(RightButton);
                     }
                     catch { }
-                    Thread.Sleep(Math.Max(1, IntervalMs));
+
+                    // Espera o restante do intervalo com precisão (Sleep até faltar
+                    // ~2ms, depois spin curto). Lê IntervalMs a cada ciclo (muda ao vivo).
+                    int interval = Math.Max(1, IntervalMs);
+                    while (!_disposed && _active)
+                    {
+                        long elapsed = sw.ElapsedMilliseconds;
+                        if (elapsed >= interval) break;
+                        if (interval - elapsed > 2)
+                            Thread.Sleep(1);
+                        else
+                            Thread.SpinWait(150);
+                    }
                 }
                 else
                 {
+                    if (highRes) { timeEndPeriod(1); highRes = false; }
                     Thread.Sleep(15);
                 }
             }
+
+            if (highRes)
+                timeEndPeriod(1);
         }
 
         void Click(bool right)
