@@ -25,10 +25,10 @@ namespace Perfect_Launcher
         // Editor de passo
         ComboBox cmbType, cmbKeyAction, cmbButton;
         TextBox txtStepKey, txtStepText, txtSX, txtSY;
-        NumericUpDown numDelay;
+        NumericUpDown numDelay, numWindow;
         CheckBox chkFixed;
         Button btnCapStep, btnAddStep;
-        Label lblMs;
+        Label lblMs, lblWindow;
         Keys _stepKey;
         int _editingStep = -1; // índice do passo em edição, ou -1
 
@@ -93,9 +93,13 @@ namespace Perfect_Launcher
 
             // ---- Editor de passo ----
             Add(Lbl("Adicionar / editar passo", x, 356));
-            cmbType = Combo(x, 378, 120, new[] { "Tecla", "Espera", "Clique", "Mover mouse", "Digitar texto" });
+            cmbType = Combo(x, 378, 120, new[] { "Tecla", "Espera", "Clique", "Mover mouse", "Digitar texto", "Trocar janela" });
             cmbType.SelectedIndexChanged += (s, e) => RefreshTypeUI();
             Add(cmbType);
+
+            // Trocar janela
+            numWindow = Num(335, 378, 70, 0, 32, 0); Add(numWindow);
+            lblWindow = Lbl("janela (0 = próxima)", 415, 381); Add(lblWindow);
 
             // Tecla
             cmbKeyAction = Combo(335, 378, 110, new[] { "Pressionar", "Segurar", "Soltar" }); Add(cmbKeyAction);
@@ -139,7 +143,7 @@ namespace Perfect_Launcher
 
         void RefreshTypeUI()
         {
-            int t = cmbType.SelectedIndex; // 0 Tecla 1 Espera 2 Clique 3 Mover 4 Texto
+            int t = cmbType.SelectedIndex; // 0 Tecla 1 Espera 2 Clique 3 Mover 4 Texto 5 Trocar janela
             cmbKeyAction.Visible = txtStepKey.Visible = t == 0;
             numDelay.Visible = lblMs.Visible = t == 1;
             cmbButton.Visible = t == 2;
@@ -147,6 +151,7 @@ namespace Perfect_Launcher
             bool xy = t == 2 || t == 3;
             txtSX.Visible = txtSY.Visible = btnCapStep.Visible = xy;
             txtStepText.Visible = t == 4;
+            numWindow.Visible = lblWindow.Visible = t == 5;
             UpdateXYEnabled();
         }
 
@@ -227,6 +232,9 @@ namespace Perfect_Launcher
                     st.Type = StepType.Text; st.Text = txtStepText.Text;
                     if (st.Text.Length == 0) { MessageBox.Show("Digite o texto do passo."); return; }
                     break;
+                case 5:
+                    st.Type = StepType.ChangeWindow; st.WindowIndex = (int)numWindow.Value;
+                    break;
             }
 
             if (_editingStep >= 0 && _editingStep < m.Steps.Count) m.Steps[_editingStep] = st;
@@ -252,6 +260,7 @@ namespace Perfect_Launcher
                 case StepType.MouseClick: cmbType.SelectedIndex = 2; cmbButton.SelectedIndex = (int)st.Button; chkFixed.Checked = !st.UseCursor; txtSX.Text = st.X.ToString(); txtSY.Text = st.Y.ToString(); break;
                 case StepType.MouseMove: cmbType.SelectedIndex = 3; txtSX.Text = st.X.ToString(); txtSY.Text = st.Y.ToString(); break;
                 case StepType.Text: cmbType.SelectedIndex = 4; txtStepText.Text = st.Text; break;
+                case StepType.ChangeWindow: cmbType.SelectedIndex = 5; numWindow.Value = Math.Min(numWindow.Maximum, st.WindowIndex); break;
             }
             RefreshTypeUI();
         }

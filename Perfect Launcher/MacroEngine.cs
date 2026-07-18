@@ -11,7 +11,7 @@ using System.Windows.Forms;
 
 namespace Perfect_Launcher
 {
-    public enum StepType { KeyPress, KeyDown, KeyUp, Delay, MouseClick, MouseMove, Text }
+    public enum StepType { KeyPress, KeyDown, KeyUp, Delay, MouseClick, MouseMove, Text, ChangeWindow }
     public enum TriggerMode { Once, Repeat, Toggle, Hold }
     public enum MacroButton { Left, Right, Middle }
 
@@ -25,6 +25,7 @@ namespace Perfect_Launcher
         public bool UseCursor = true; // MouseClick/MouseMove: no cursor atual?
         public int X, Y;            // MouseClick/MouseMove (se !UseCursor)
         public string Text = "";    // Text
+        public int WindowIndex;     // ChangeWindow (0 = próxima janela; N = janela N)
 
         public string Describe()
         {
@@ -37,6 +38,7 @@ namespace Perfect_Launcher
                 case StepType.MouseClick: return "Clique " + BtnName(Button) + (UseCursor ? " (no cursor)" : " em " + X + "," + Y);
                 case StepType.MouseMove: return "Mover mouse para " + (UseCursor ? "(cursor)" : X + "," + Y);
                 case StepType.Text: return "Digitar: \"" + (Text.Length > 24 ? Text.Substring(0, 24) + "…" : Text) + "\"";
+                case StepType.ChangeWindow: return "Trocar janela: " + (WindowIndex <= 0 ? "próxima" : "conta " + WindowIndex);
             }
             return "?";
         }
@@ -55,6 +57,7 @@ namespace Perfect_Launcher
                 case StepType.MouseClick: return "c:" + (int)Button + "," + (UseCursor ? "cur" : X + "," + Y);
                 case StepType.MouseMove: return "m:" + (UseCursor ? "cur" : X + "," + Y);
                 case StepType.Text: return "t:" + Convert.ToBase64String(Encoding.UTF8.GetBytes(Text ?? ""));
+                case StepType.ChangeWindow: return "g:" + WindowIndex;
             }
             return "";
         }
@@ -88,6 +91,7 @@ namespace Perfect_Launcher
                         else { st.UseCursor = false; var mp = val.Split(','); st.X = int.Parse(mp[0]); st.Y = int.Parse(mp[1]); }
                         return st;
                     case "t": st.Type = StepType.Text; st.Text = Encoding.UTF8.GetString(Convert.FromBase64String(val)); return st;
+                    case "g": st.Type = StepType.ChangeWindow; st.WindowIndex = int.Parse(val); return st;
                 }
             }
             catch { }
@@ -204,6 +208,15 @@ namespace Perfect_Launcher
             return CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
         }
 
+        // Dispara um macro como se a tecla de atalho tivesse sido pressionada
+        // (respeita o modo: uma vez, repetir, alternar, segurar). Usado pelos botões
+        // de macro na tela do Combar.
+        public void Trigger(Macro m)
+        {
+            if (m != null && m.Steps.Count > 0)
+                OnTriggerDown(m);
+        }
+
         void OnTriggerDown(Macro m)
         {
             switch (m.Mode)
@@ -302,6 +315,28 @@ namespace Perfect_Launcher
                 case StepType.Text:
                     foreach (char c in st.Text ?? "") { SendChar(c); Thread.Sleep(5); }
                     break;
+                case StepType.ChangeWindow:
+                    {
+                        List<IntPtr> wins;
+                        try { wins = _getTargets() ?? new List<IntPtr>(); }
+                        catch { break; }
+                        if (wins.Count == 0) break;
+
+                        IntPtr target;
+                        if (st.WindowIndex <= 0) // próxima janela (relativa à atual)
+                        {
+                            int idx = wins.IndexOf(GetForegroundWindow());
+                            target = wins[(idx + 1) % wins.Count];
+                        }
+                        else
+                        {
+                            target = wins[Math.Min(st.WindowIndex - 1, wins.Count - 1)];
+                        }
+                        ShowWindowAsync(target, SW_RESTORE);
+                        SetForegroundWindow(target);
+                        Thread.Sleep(80);
+                        break;
+                    }
             }
             Thread.Sleep(5);
         }

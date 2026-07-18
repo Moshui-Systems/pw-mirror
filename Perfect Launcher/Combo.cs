@@ -90,6 +90,10 @@ namespace Perfect_Launcher
 
         public const int SW_RESTORE = 9;
 
+        // Teclas que o combo pressiona em sequência (configurável). Padrão F1..F8.
+        int[] _comboKeys = { VK_F1, VK_F2, VK_F3, VK_F4, VK_F5, VK_F6, VK_F7, VK_F8 };
+        string ComboKeysPath { get { return Application.StartupPath + "\\Perfect Launcher\\combokeys.txt"; } }
+
         // Form1 ref
         Form1 f1;
 
@@ -503,6 +507,56 @@ namespace Perfect_Launcher
             catch { }
         }
 
+        private void LoadComboKeys()
+        {
+            try
+            {
+                if (File.Exists(ComboKeysPath))
+                {
+                    var parts = File.ReadAllText(ComboKeysPath).Split(new[] { ',', ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                    var list = new List<int>();
+                    foreach (var p in parts) { int v; if (int.TryParse(p, out v) && v > 0) list.Add(v); }
+                    if (list.Count > 0) _comboKeys = list.ToArray();
+                }
+            }
+            catch { }
+        }
+
+        // Diálogo simples: o usuário digita os nomes das teclas na ordem do combo.
+        private void ConfigureComboKeys()
+        {
+            string current = string.Join(" ", _comboKeys.Select(k => ((Keys)k).ToString()));
+            using (var dlg = new Form())
+            {
+                dlg.Text = "Teclas do combo";
+                dlg.ClientSize = new Size(420, 150);
+                dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dlg.StartPosition = FormStartPosition.CenterParent;
+                dlg.MaximizeBox = dlg.MinimizeBox = false;
+                dlg.BackColor = Theme.Bg; dlg.ForeColor = Theme.Text; dlg.Font = new Font("Segoe UI", 9f);
+                var lbl = new Label { Text = "Teclas na ordem que o combo aperta (separadas por espaço).\nEx.: F1 F2 F3 R Q   (números do topo use D1..D0)", AutoSize = false, Size = new Size(400, 40), Location = new Point(12, 10), ForeColor = Theme.TextDim };
+                var txt = new TextBox { Text = current, Location = new Point(12, 58), Size = new Size(396, 24), BackColor = Theme.Panel, ForeColor = Theme.Text, BorderStyle = BorderStyle.FixedSingle };
+                var ok = new Button { Text = "Salvar", Location = new Point(310, 100), Size = new Size(98, 30), FlatStyle = FlatStyle.Flat, BackColor = Theme.Accent, ForeColor = Color.White, DialogResult = DialogResult.OK };
+                ok.FlatAppearance.BorderColor = Theme.Accent;
+                dlg.Controls.Add(lbl); dlg.Controls.Add(txt); dlg.Controls.Add(ok); dlg.AcceptButton = ok;
+
+                if (dlg.ShowDialog(this) == DialogResult.OK)
+                {
+                    var list = new List<int>();
+                    foreach (var tok in txt.Text.Split(new[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        Keys k;
+                        if (Enum.TryParse(tok, true, out k) && k != Keys.None) list.Add((int)k);
+                    }
+                    if (list.Count > 0)
+                    {
+                        _comboKeys = list.ToArray();
+                        try { File.WriteAllText(ComboKeysPath, string.Join(",", _comboKeys)); } catch { }
+                    }
+                }
+            }
+        }
+
         private void button2_Click_1(object sender, EventArgs e)
         {
             if (listBox2.SelectedItem == null)
@@ -739,38 +793,24 @@ namespace Perfect_Launcher
 
         private async void ComboLoop(bool OnlyF4)
         {
-            // Se o forcestop for true ou o count >= 8 (chegou ja última tecla pressionada)
-            if (bForceStop || ProcessQueue.Count <= 0 || OnlyF4 ? (Count > 4) : (Count > 8))
+            // Parênteses corretos: bForceStop SEMPRE para (o bug antigo era de precedência).
+            if (bForceStop || ProcessQueue.Count <= 0 || (OnlyF4 ? Count > 4 : Count > _comboKeys.Length))
             {
                 Stop();
                 return;
             }
 
-            int KEY;
-
-            switch (Count)
-            {
-                case 1: KEY = VK_F1; label5.Text = "Pressionando F1"; break;
-                case 2: KEY = VK_F2; label5.Text = "Pressionando F2"; break;
-                case 3: KEY = VK_F3; label5.Text = "Pressionando F3"; break;
-                case 4: KEY = VK_F4; label5.Text = "Pressionando F4"; break;
-                case 5: KEY = VK_F5; label5.Text = "Pressionando F5"; break;
-                case 6: KEY = VK_F6; label5.Text = "Pressionando F6"; break;
-                case 7: KEY = VK_F7; label5.Text = "Pressionando F7"; break;
-                default: KEY = VK_F8; label5.Text = "Pressionando F8"; break;
-            }
-
-            // Se o onlyf4 for true, força a key pra ser o F4
-            if (OnlyF4)
-                KEY = VK_F4;
+            // Tecla desta rodada (configurável). No modo OnlyF4, sempre F4.
+            int KEY = OnlyF4 ? VK_F4 : _comboKeys[Math.Min(Count - 1, _comboKeys.Length - 1)];
+            label5.Text = "Pressionando " + (OnlyF4 ? "F4" : ((Keys)KEY).ToString());
 
             // Pra cada conta na lista, joga a janela pra frente e pressiona a tecla
             try
             {
                 for (int i = 0; i < ProcessQueue.Count; i++)
                 {
-                    // Se o forcestop for true ou o count >= 8 (chegou ja última tecla pressionada)
-                    if (bForceStop || ProcessQueue.Count <= 0 || OnlyF4 ? (Count > 4) : (Count > 8))
+                    // bForceStop para na hora (parênteses corretos)
+                    if (bForceStop || ProcessQueue.Count <= 0 || (OnlyF4 ? Count > 4 : Count > _comboKeys.Length))
                     {
                         Stop();
                         return;
@@ -786,7 +826,7 @@ namespace Perfect_Launcher
 
                     // Dorme x segundos
                     // Valor do numericupdown / pela quantidade de contas abertas
-                    await Task.Delay((Count <= 4 ? Convert.ToInt32(numericUpDown1.Value) : Convert.ToInt32(numericUpDown2.Value)) / ProcessQueue.Count);
+                    await Task.Delay((Count <= Math.Max(1, _comboKeys.Length / 2) ? Convert.ToInt32(numericUpDown1.Value) : Convert.ToInt32(numericUpDown2.Value)) / ProcessQueue.Count);
                 }
 
                 // Caso o onlyf4 seja true, checa se é em loop
@@ -826,11 +866,69 @@ namespace Perfect_Launcher
             // Cria o checkbox visível do espelhamento (mirror)
             SetupMirrorToggle();
 
+            // Teclas configuráveis do combo + extras (config, aba de macros)
+            LoadComboKeys();
+            SetupComboExtras();
+
             UpdateListBox1();
 
             // Restaura a fila do combo salva da última vez
             LoadComboQueue();
             UpdateListBox2();
+        }
+
+        private TabPage _macrosTab;
+        private FlowLayoutPanel _macrosPanel;
+
+        private void SetupComboExtras()
+        {
+            // Item no menu de opções (botão ">>") para configurar as teclas do combo
+            contextMenuStrip1.Items.Add(new ToolStripSeparator());
+            var cfg = new ToolStripMenuItem("Configurar teclas do combo...");
+            cfg.Click += (s, e) => ConfigureComboKeys();
+            contextMenuStrip1.Items.Add(cfg);
+
+            // Aba "Macros" com um botão por macro (roda ao clicar)
+            if (f1 != null && f1.MacroEng != null)
+            {
+                _macrosTab = new TabPage("Macros") { BackColor = Theme.Bg };
+                _macrosPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(8), BackColor = Theme.Bg };
+                _macrosTab.Controls.Add(_macrosPanel);
+                tabControl1.TabPages.Add(_macrosTab);
+                RefreshMacroButtons();
+            }
+        }
+
+        private void RefreshMacroButtons()
+        {
+            if (_macrosPanel == null || f1 == null || f1.MacroEng == null)
+                return;
+
+            _macrosPanel.Controls.Clear();
+            var lbl = new Label { Text = "Clique para rodar (ou use a tecla de atalho do macro):", AutoSize = false, Size = new Size(500, 20), ForeColor = Theme.TextDim, Margin = new Padding(3, 3, 3, 8) };
+            _macrosPanel.SetFlowBreak(lbl, true);
+            _macrosPanel.Controls.Add(lbl);
+
+            foreach (var m in f1.MacroEng.Macros)
+            {
+                var macro = m;
+                string label = (string.IsNullOrWhiteSpace(m.Name) ? "(sem nome)" : m.Name) + (m.Trigger != Keys.None ? "  [" + m.Trigger + "]" : "");
+                var b = new Button
+                {
+                    Text = label,
+                    AutoSize = false,
+                    Size = new Size(200, 34),
+                    Margin = new Padding(4),
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = Theme.Panel,
+                    ForeColor = Theme.Text,
+                    Cursor = Cursors.Hand
+                };
+                b.FlatAppearance.BorderColor = Theme.Accent;
+                b.FlatAppearance.MouseOverBackColor = Theme.PanelHover;
+                b.Click += (s, e) => f1.MacroEng.Trigger(macro);
+                _macrosPanel.Controls.Add(b);
+            }
         }
 
         // Cria um checkbox visível "Espelhar" na janela do Combar. O motor do mirror
