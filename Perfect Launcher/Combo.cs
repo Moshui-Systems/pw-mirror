@@ -557,6 +557,57 @@ namespace Perfect_Launcher
             }
         }
 
+        string SyncClickPath { get { return Application.StartupPath + "\\Perfect Launcher\\syncclick.txt"; } }
+
+        private void LoadSyncClick()
+        {
+            try
+            {
+                if (f1 == null || f1.Mirror == null || !File.Exists(SyncClickPath))
+                    return;
+                var parts = File.ReadAllText(SyncClickPath).Split(',');
+                int vk; if (parts.Length > 0 && int.TryParse(parts[0], out vk)) f1.Mirror.SyncClickKey = (Keys)vk;
+                f1.Mirror.SyncClickRight = parts.Length > 1 && parts[1].Trim() == "1";
+            }
+            catch { }
+        }
+
+        // Configura a tecla do clique sincronizado (todas as janelas clicam onde o cursor está).
+        private void ConfigureSyncClick()
+        {
+            if (f1 == null || f1.Mirror == null)
+                return;
+
+            Keys picked = f1.Mirror.SyncClickKey;
+            using (var dlg = new Form())
+            {
+                dlg.Text = "Clique sincronizado";
+                dlg.ClientSize = new Size(420, 175);
+                dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dlg.StartPosition = FormStartPosition.CenterParent;
+                dlg.MaximizeBox = dlg.MinimizeBox = false;
+                dlg.BackColor = Theme.Bg; dlg.ForeColor = Theme.Text; dlg.Font = new Font("Segoe UI", 9f);
+
+                var lbl = new Label { Text = "Aperte esta tecla e TODAS as janelas clicam onde o cursor\nestá (funciona em segundo plano, sem streamer mode).", AutoSize = false, Size = new Size(400, 40), Location = new Point(12, 10), ForeColor = Theme.TextDim };
+                var lblKey = new Label { Text = "Tecla:", AutoSize = true, Location = new Point(12, 60), ForeColor = Theme.Text };
+                var txt = new TextBox { Text = picked == Keys.None ? "" : picked.ToString(), ReadOnly = true, Cursor = Cursors.Hand, Location = new Point(60, 57), Size = new Size(150, 24), BackColor = Theme.Panel, ForeColor = Theme.Text, BorderStyle = BorderStyle.FixedSingle };
+                txt.KeyDown += (s, e) => { picked = e.KeyCode; txt.Text = e.KeyCode.ToString(); e.SuppressKeyPress = true; };
+                var chkRight = new CheckBox { Text = "Botão direito", Location = new Point(230, 59), AutoSize = true, ForeColor = Theme.Text, Checked = f1.Mirror.SyncClickRight };
+                var clr = new Button { Text = "Limpar", Location = new Point(12, 128), Size = new Size(90, 30), FlatStyle = FlatStyle.Flat, ForeColor = Theme.Text, BackColor = Theme.Panel };
+                clr.FlatAppearance.BorderColor = Theme.Accent; clr.Click += (s, e) => { picked = Keys.None; txt.Text = ""; };
+                var ok = new Button { Text = "Salvar", Location = new Point(310, 128), Size = new Size(98, 30), FlatStyle = FlatStyle.Flat, BackColor = Theme.Accent, ForeColor = Color.White, DialogResult = DialogResult.OK };
+                ok.FlatAppearance.BorderColor = Theme.Accent;
+                dlg.Controls.Add(lbl); dlg.Controls.Add(lblKey); dlg.Controls.Add(txt); dlg.Controls.Add(chkRight); dlg.Controls.Add(clr); dlg.Controls.Add(ok);
+
+                if (dlg.ShowDialog(this) == DialogResult.OK)
+                {
+                    f1.Mirror.SyncClickKey = picked;
+                    f1.Mirror.SyncClickRight = chkRight.Checked;
+                    try { File.WriteAllText(SyncClickPath, (int)picked + "," + (chkRight.Checked ? 1 : 0)); } catch { }
+                }
+            }
+        }
+
         private void button2_Click_1(object sender, EventArgs e)
         {
             if (listBox2.SelectedItem == null)
@@ -868,6 +919,7 @@ namespace Perfect_Launcher
 
             // Teclas configuráveis do combo + extras (config, aba de macros)
             LoadComboKeys();
+            LoadSyncClick();
             SetupComboExtras();
 
             UpdateListBox1();
@@ -887,6 +939,10 @@ namespace Perfect_Launcher
             var cfg = new ToolStripMenuItem("Configurar teclas do combo...");
             cfg.Click += (s, e) => ConfigureComboKeys();
             contextMenuStrip1.Items.Add(cfg);
+
+            var sc = new ToolStripMenuItem("Configurar clique sincronizado...");
+            sc.Click += (s, e) => ConfigureSyncClick();
+            contextMenuStrip1.Items.Add(sc);
 
             // Aba "Macros" com um botão por macro (roda ao clicar)
             if (f1 != null && f1.MacroEng != null)

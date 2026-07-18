@@ -99,6 +99,9 @@ namespace Perfect_Launcher
         static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
 
         [DllImport("user32.dll")]
+        static extern bool GetCursorPos(out POINT lpPoint);
+
+        [DllImport("user32.dll")]
         static extern uint MapVirtualKey(uint uCode, uint uMapType);
 
         // ---- Estado ----
@@ -135,6 +138,12 @@ namespace Perfect_Launcher
 
         /// <summary>Tecla que liga/desliga o mirror mesmo com o launcher minimizado (padrão: Pause/Break).</summary>
         public Keys ToggleKey = Keys.Pause;
+
+        /// <summary>Tecla de "clique sincronizado": ao apertar, TODAS as janelas clicam onde
+        /// o cursor está (via mensagem — funciona em segundo plano e sem streamer mode).
+        /// Keys.None = desativado.</summary>
+        public Keys SyncClickKey = Keys.None;
+        public bool SyncClickRight = false;
 
         /// <summary>Se false, movimentos do mouse não são espelhados (apenas cliques/roda).</summary>
         public bool MirrorMouseMove = true;
@@ -192,6 +201,13 @@ namespace Perfect_Launcher
                     Enabled = !Enabled;
                     System.Media.SystemSounds.Beep.Play();
                     StateChanged?.Invoke(Enabled);
+                    return (IntPtr)1;
+                }
+
+                // Clique sincronizado (não precisa do mirror ligado nem de streamer mode)
+                if ((msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) && SyncClickKey != Keys.None && (Keys)data.vkCode == SyncClickKey)
+                {
+                    DoSyncClick();
                     return (IntPtr)1;
                 }
 
@@ -328,9 +344,50 @@ namespace Perfect_Launcher
                     continue;
 
                 if (msg == WM_MOUSEWHEEL)
+                {
                     PostMessage(h, WM_MOUSEWHEEL, wheelW, screenL);
-                else
-                    PostMessage(h, (uint)msg, btnW, lpClient);
+                    continue;
+                }
+
+                // Antes de um clique, "move" o cursor da janela para a posição — assim o
+                // jogo registra o alvo/hover mesmo com a janela em segundo plano (o clique
+                // por mensagem funciona sem streamer mode; só o teclado precisa dele).
+                if (msg != WM_MOUSEMOVE)
+                    PostMessage(h, WM_MOUSEMOVE, Ptr(0), lpClient);
+
+                PostMessage(h, (uint)msg, btnW, lpClient);
+            }
+        }
+
+        // Clique sincronizado: manda o mesmo clique (na posição atual do cursor) para
+        // TODAS as janelas de cliente, inclusive a de foco. Funciona em segundo plano e
+        // sem streamer mode porque o clique é lido pela fila de mensagens do jogo.
+        void DoSyncClick()
+        {
+            List<IntPtr> targets;
+            try { targets = _getTargets() ?? new List<IntPtr>(); }
+            catch { return; }
+            if (targets.Count == 0)
+                return;
+
+            POINT cur;
+            if (!GetCursorPos(out cur))
+                return;
+
+            uint down = SyncClickRight ? (uint)WM_RBUTTONDOWN : (uint)WM_LBUTTONDOWN;
+            uint up = SyncClickRight ? (uint)WM_RBUTTONUP : (uint)WM_LBUTTONUP;
+            uint mk = SyncClickRight ? MK_RBUTTON : MK_LBUTTON;
+
+            foreach (IntPtr h in targets)
+            {
+                if (h == IntPtr.Zero)
+                    continue;
+                POINT p = cur;
+                ScreenToClient(h, ref p);
+                IntPtr lp = Ptr(((uint)(p.y & 0xFFFF) << 16) | (uint)(p.x & 0xFFFF));
+                PostMessage(h, WM_MOUSEMOVE, Ptr(0), lp);
+                PostMessage(h, down, Ptr(mk), lp);
+                PostMessage(h, up, Ptr(0), lp);
             }
         }
 
